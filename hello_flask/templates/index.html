@@ -4,37 +4,38 @@
     <link rel="stylesheet" type="text/css" href="index.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.2/socket.io.js"></script>
     <script src="/static/functions.js"></script>
-    
 </head>
 
-<div class="background"></div>
-
 <body>
-<h1>Silicon Sages Quiz App!</h1>
-<div class="form-container">
-    <div class="form-section">
-        <h2>Register</h2>
-        <form action="/register" method="post">
-            <div>
-                <label for="reg_username">Username:</label>
-                <input type="text" id="reg_username" name="reg_username" required>
-            </div>
-            <div>
-                <label for="reg_password">Password:</label>
-                <input type="password" id="reg_password" name="reg_password" required>
-            </div>
-            <div>
-                <input type="submit" name="submit-button" value="Register" class="button">
-            </div>
-            <div id = "link">
-                <p>Already Registered? <a href="/login.html">Login</a></p>
-            </div>
-            <div id = "guest">
-                <a href="/view_quizzes" onclick="guestMode();">Sign in as Guest</a>
-            </div>
-        </form>
+    <div class="background"></div>
+    <h1>Silicon Sages Quiz App!</h1>
+    <div class="form-container">
+        <div class="form-section">
+            <h2>Register</h2>
+            <form action="/register" method="post">
+                <div>
+                    <label for="reg_username">Username:</label>
+                    <input type="text" id="reg_username" name="reg_username" required>
+                </div>
+                <div>
+                    <label for="reg_password">Password:</label>
+                    <input type="password" id="reg_password" name="reg_password" required>
+                </div>
+                <div>
+                    <label for="reg_email">Email address:</label>
+                    <input type="email" id="reg_email" name="reg_email" placeholder="yourname@gmail.com" required>
+                </div>
+                <div>
+                    <input type="submit" name="submit-button" value="Register" class="button">
+                </div>
+                <div id="link">
+                    <p>Already Registered? <a href="/login.html">Login</a></p>
+                </div>
+                <div id="guest">
+                    <a href="/view_quizzes" onclick="guestMode();">Sign in as Guest</a>
+                </div>
+            </form>
+        </div>
     </div>
-
-</div> 
 </body>
 </html>
