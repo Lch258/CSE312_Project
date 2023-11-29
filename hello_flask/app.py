@@ -4,9 +4,8 @@ import os
 import time
 import bcrypt
 import json
-from datetime import datetime
 from bson.objectid import ObjectId
-from flask import Flask, make_response, request, redirect, render_template, send_from_directory
+from flask import Flask, make_response, request, redirect, render_template, send_from_directory, session
 from pymongo import MongoClient
 from uuid import uuid4
 from flask_socketio import SocketIO, emit
@@ -20,6 +19,7 @@ quiz_collection = db['quiz']
 score_collection = db['score']  # used to track user's score
 
 app = Flask(__name__)  # initialise the applicaton
+app.secret_key = '123456789'
 socketio = SocketIO(app, async_mode='eventlet', transports=['websocket'])
 
 # post_collection.delete_many({})  # REMOVE THIS LINE
@@ -92,6 +92,7 @@ def guestMode():
 def register():
     username = html.escape(str(request.form.get('reg_username')))  # working, gets username from request
     bPass = str(request.form.get('reg_password')).encode()  # password from request in bytes
+    email = html.escape(str(request.form.get('reg_email')))  # email address from request
     salt = bcrypt.gensalt()  # salt used to hash password (we need this later)
     hashPass = bcrypt.hashpw(bPass, salt)  # salted and hashed password
 
@@ -100,7 +101,13 @@ def register():
     if len(registeredUsers) != 0:  # this list is always len 1, the only element is one dictionary containing each user record
         return redirect("/", 301)  # username is not available
     else:
-        security_collection.insert_one({"username": username, "salt": salt, "hpw": hashPass})  # username is unique so it is inserted into the database
+        security_collection.insert_one({
+            "username": username,
+            "salt": salt,
+            "hpw": hashPass,
+            "email": email,
+            "email_verified": False
+        })  # username is unique so it is inserted into the database
         # score_collection.insert_one({"username": username, "score": 0})
         return redirect("/login.html", 301)  # username is available
 
@@ -126,6 +133,9 @@ def login():
                                            True)  # updates database to include authenticated token hash in the record
             response = make_response(redirect('/view_quizzes', 301))  # generates response that will redirect to the posts page
             response.set_cookie("auth", token, 3600, httponly=True)  # sets authentication token as a cookie
+
+            session['logged_in'] = True
+            session['email_verified'] = userInfo.get('email_verified', False)
             return response
         else:
             return redirect("/login.html", 301)  # incorrect password
