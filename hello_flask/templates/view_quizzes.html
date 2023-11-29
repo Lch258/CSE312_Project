@@ -11,8 +11,25 @@
 <div class="background"></div>
 
 <body>
-    <h1>Quizzes Created by Users<a class= 'gradebook' href="/gradebook">GradeBook</a></h1>
-    <a href="/create_quiz">Create a Quiz</a>
+    <h1>Quizzes Created by Users</h1>
+    <div class="gradebook-link">
+        <a class="button-link gradebook" href="/gradebook">GradeBook</a>
+    </div>
+
+    {% if session.logged_in %}
+    <p>Welcome!
+        {% if session.email_verified %}
+            Your email is verified.
+        {% else %}
+            Your email is not verified. <a href="/send_verification" class="verify-link">Verify now</a>
+        {% endif %}
+    </p>
+    {% endif %}
+
+    <div class="create-quiz-link">
+        <a href="/create_quiz" class="button-link">Create a Quiz</a>
+    </div>
+
     <ul>
         {% for quiz in quizzes %}
         <li class="quiz hide-quiz" data-quiz-id="{{ quiz._id }}"  >
