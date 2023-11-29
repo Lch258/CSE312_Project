@@ -73,3 +73,45 @@ a.gradebook:hover {
 .grade{
     color: #e70909;
 }
+
+.verify-link {
+    display: inline;
+    background-color: #3498db;
+    color: white;
+    padding: 5px 10px;
+    margin-left: 10px;
+    border-radius: 3px;
+    text-decoration: none;
+}
+
+.verify-link:hover {
+    background-color: #fd0000;
+}
+
+.gradebook-link {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.create-quiz-link {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+}
+
+.button-link {
+    display: inline-block;
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    text-align: center;
+}
+
+.button-link:hover {
+    background-color: #217dbb;
+}
