@@ -5,10 +5,12 @@ import time
 import bcrypt
 import json
 from bson.objectid import ObjectId
-from flask import Flask, make_response, request, redirect, render_template, send_from_directory, session
+from flask import Flask, make_response, request, redirect, render_template, send_from_directory, session, jsonify
 from pymongo import MongoClient
 from uuid import uuid4
 from flask_socketio import SocketIO, emit
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 mongo_client = MongoClient("mongo")
 db = mongo_client["cse312"]  # database
@@ -22,29 +24,50 @@ app = Flask(__name__)  # initialise the applicaton
 app.secret_key = '123456789'
 socketio = SocketIO(app, async_mode='eventlet', transports=['websocket'])
 
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["50 per 10 seconds"],
+    storage_uri="memory://",
+)
+
+blocked = {}
+
 # post_collection.delete_many({})  # REMOVE THIS LINE
 # security_collection.delete_many({})  # REMOVE THIS LINE
 # quiz_collection.delete_many({})
 
 global score
+
+@app.before_request
+def before_request():
+    ip_address = get_remote_address()
+    if ip_address in blocked and blocked[ip_address] > time.time():
+        return jsonify(error="Too Many Requests", message="IP is blocked"), 429
+
 start_times = {}
 @app.route("/")
+@limiter.limit("50 per 10 seconds")
 def home():
     return htmler("templates/index.html")
 
 @app.route("/login.html")
+@limiter.limit("50 per 10 seconds")
 def logger():
     return htmler("templates/login.html")
 
 @app.route("/index.css")
+@limiter.limit("50 per 10 seconds")
 def indexCsser():
     return csser("templates/index.css")
 
 @app.route("/posts.html")
+@limiter.limit("50 per 10 seconds")
 def posterhtml():
     return htmler("templates/posts.html")
 
 @app.route("/posts.css")
+@limiter.limit("50 per 10 seconds")
 def posterthingy():
     return csser("templates/posts.css")
 
@@ -59,6 +82,7 @@ def userLocator():
     return username
 
 @app.route("/functions.js")
+@limiter.limit("50 per 10 seconds")
 def jsFunctions():
     jsCodeStream = open("static/functions.js", "rb").read()
     return betterMakeResponse(jsCodeStream, "text/javascript")
@@ -69,6 +93,7 @@ def background():
     return betterMakeResponse(imageCodeStream, "image/jpg")
 
 @app.route("/visit-counter")
+@limiter.limit("50 per 10 seconds")
 def cookie():
     timesvisited = 1
     if "visits" in request.cookies:
@@ -81,6 +106,7 @@ def cookie():
     return response
 
 @app.route("/guest", methods=['POST'])
+@limiter.limit("50 per 10 seconds")
 def guestMode():
     token_str = request.cookies.get("auth")  # gets auth plaintext cookie
     response = make_response(redirect("/view_quizzes.html", 301))  # makes redirect response object
@@ -89,6 +115,7 @@ def guestMode():
     return response  # return posts.html
 
 @app.route("/register", methods=['POST'])
+@limiter.limit("50 per 10 seconds")
 def register():
     username = html.escape(str(request.form.get('reg_username')))  # working, gets username from request
     bPass = str(request.form.get('reg_password')).encode()  # password from request in bytes
@@ -112,6 +139,7 @@ def register():
         return redirect("/login.html", 301)  # username is available
 
 @app.route("/login", methods=['POST'])
+@limiter.limit("50 per 10 seconds")
 def login():
     username = html.escape(str(request.form.get('log_username')))  # gets username from the username textbox
     password = str(request.form.get('log_password')).encode()  # gets password from the password textbox
@@ -143,6 +171,7 @@ def login():
         return redirect("/login.html", 301)  # username not found
 
 @app.route("/get_posts", methods=['GET'])
+@limiter.limit("50 per 10 seconds")
 def get_posts():  # UNTESTED (pulled from most recent push)
     posts = list(post_collection.find({}))
     for post in posts:
@@ -150,6 +179,7 @@ def get_posts():  # UNTESTED (pulled from most recent push)
     return json.dumps(posts)
 
 @app.route("/add_post", methods=['POST'])  # stores posts in the database
+@limiter.limit("50 per 10 seconds")
 def addPost():
     token_str = request.cookies.get('auth')  # token is a now a string in the database
     try:
@@ -177,6 +207,7 @@ def addPost():
     return betterMakeResponse("Post Success", "text/plain")
 
 @app.route('/like', methods=['POST'])
+@limiter.limit("50 per 10 seconds")
 def like():
     token_str = request.cookies.get('auth')  # token is a now a string in the database
     try:
@@ -209,6 +240,7 @@ def like():
         return betterMakeResponse("User did not like", "text/plain", 200)
 
 @app.route('/create_quiz', methods=['GET', 'POST'])
+@limiter.limit("50 per 10 seconds")
 def create_quiz():
     authenticatedUser = False       #false if guest
     username = userLocator()
@@ -266,15 +298,18 @@ def create_quiz():
         return render_template('create_quiz.html')
 
 @app.route('/uploaded_file/<filename>')
+@limiter.limit("50 per 10 seconds")
 def sendimage(filename):
     return send_from_directory('/uploaded',filename)
 
 @app.route('/view_quizzes', methods=['GET'])
+@limiter.limit("50 per 10 seconds")
 def view_quizzes():
     quizzes = quiz_collection.find({'notdisplay': {'$ne': True}})
     return render_template('view_quizzes.html', quizzes=quizzes)
 
 @app.route('/check_answer/<quiz_id>', methods=['POST'])
+@limiter.limit("50 per 10 seconds")
 def check_answer(quiz_id):
     if request.method == 'POST':
         selected_choice = request.form.get('choice')                        #uses get in case there is no choice selected
@@ -367,6 +402,7 @@ def check_answer(quiz_id):
         return render_template('answer_result.html', message=response_message, return_url='/view_quizzes')
     
 @app.route('/gradebook', methods=['GET'])
+@limiter.limit("50 per 10 seconds")
 def gradebook():
     token_str = request.cookies.get('auth')  # token is a now a string in the database
     try:
@@ -441,6 +477,13 @@ def get_remaining_time(data):
         quiz_collection.update_one({'_id': ObjectId(quiz_id)}, {'$set': {'notdisplay': True}})
         emit('refresh',broadcast=True)  #broadcast flag is for sending to ALL clients and not just one
     emit('update_remaining_time',{'quiz_id':quiz_id,'remaining_time':remaining_time},broadcast=True)
+
+@app.errorhandler(429)
+def ratelimit_error(e):
+    ip_address = get_remote_address()
+    blocked[ip_address] = time.time() + 30
+    return jsonify(error="ratelimit exceeded", message=str(e.description)), 429
+
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=8080, debug=True)  # any time files change automatically refresh
