@@ -9,4 +9,4 @@ services:
         environment:
             WAIT_HOSTS: mongo:27017
         ports:
-            - '80:8080'
+            - '8080:8080'
