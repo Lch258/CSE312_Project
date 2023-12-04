@@ -26,7 +26,6 @@ quiz_collection = db['quiz']
 score_collection = db['score']  # used to track user's score
 
 app = Flask(__name__)  # initialise the applicaton
-app.config['SERVER_NAME'] = 'siliconsages.software'
 app.secret_key = '123456789'
 app.config["SECURITY_PASSWORD_SALT"] = "123456789123456789123456789"
 socketio = SocketIO(app, async_mode='eventlet', transports=['websocket'])
@@ -543,6 +542,7 @@ def send_verification_email(email):
     token = serializer.dumps(email, salt=app.config["SECURITY_PASSWORD_SALT"])
     print(token)
     confirm_url = url_for('confirm_email', token=token, _external=True)
+    confirm_url = confirm_url.replace("127.0.0.1:8080","siliconsages.software")
     html = render_template('email_verification.html', confirmurl=confirm_url)
     msg = Message(
         "Confirm your email",
