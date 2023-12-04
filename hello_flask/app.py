@@ -181,6 +181,7 @@ def login():
             session['logged_in'] = True
             session['email_verified'] = userInfo.get('email_verified', False)
             session['email'] = userInfo.get('email', False)
+            session['username'] = userInfo.get('username', False)
 
             return response
         else:
@@ -516,11 +517,14 @@ def send_verification_email(email):
     )
     mail.send(msg)
 
-#TODO: Implement the confirm token process
 @app.route('/confirm/<token>')
 def confirm_email(token):
+    print(session)
+    session['email_verified'] = True
+    email = session.get("email")
+    security_collection.update_one({"email": email}, {"$set": {"email_verified": True}})
     # confirm token logical here
-    return
+    return "Confirmed"
 @app.route('/send_verification')
 def send_verification():
     print(session)
