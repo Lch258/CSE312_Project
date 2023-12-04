@@ -7,3 +7,4 @@ bcrypt
 Flask-Limiter
 google-auth-oauthlib
 flask_mail
+python-dotenv

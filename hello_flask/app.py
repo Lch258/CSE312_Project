@@ -26,9 +26,8 @@ quiz_collection = db['quiz']
 score_collection = db['score']  # used to track user's score
 
 app = Flask(__name__)  # initialise the applicaton
-app.config['SERVER_NAME'] = 'siliconsages.software'
-app.secret_key = '123456789'
-app.config["SECURITY_PASSWORD_SALT"] = "123456789123456789123456789"
+app.secret_key = os.getenv('SECRET_KEY')
+app.config["SECURITY_PASSWORD_SALT"] = os.getenv('SECURITY_PASSWORD_SALT')
 socketio = SocketIO(app, async_mode='eventlet', transports=['websocket'])
 
 LIMIT = "50 per 10 seconds"
@@ -43,13 +42,13 @@ limiter = Limiter(
 
 blocked = {}
 
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USERNAME'] = "siliconsages@gmail.com"
-app.config['MAIL_PASSWORD'] = "zeua cdhx zecl devp"
-app.config['MAIL_DEFAULT_SENDER'] = "siliconsages@gmail.com"
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT'))
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS')
+app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL')
 mail = Mail(app)
 
 # post_collection.delete_many({})  # REMOVE THIS LINE
@@ -543,6 +542,7 @@ def send_verification_email(email):
     token = serializer.dumps(email, salt=app.config["SECURITY_PASSWORD_SALT"])
     print(token)
     confirm_url = url_for('confirm_email', token=token, _external=True)
+    confirm_url = confirm_url.replace("127.0.0.1:8080","siliconsages.software")
     html = render_template('email_verification.html', confirmurl=confirm_url)
     msg = Message(
         "Confirm your email",
