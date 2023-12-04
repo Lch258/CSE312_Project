@@ -5,7 +5,8 @@ import time
 import bcrypt
 import json
 from bson.objectid import ObjectId
-from flask import Flask, make_response, request, redirect, render_template, send_from_directory, session, jsonify, url_for
+from flask import Flask, make_response, request, redirect, render_template, send_from_directory, session, jsonify, \
+    url_for
 from pymongo import MongoClient
 from uuid import uuid4
 from flask_socketio import SocketIO, emit
@@ -16,8 +17,6 @@ from itsdangerous import URLSafeTimedSerializer
 
 import os
 
-
-
 mongo_client = MongoClient("mongo")
 db = mongo_client["cse312"]  # database
 
@@ -27,11 +26,13 @@ quiz_collection = db['quiz']
 score_collection = db['score']  # used to track user's score
 
 app = Flask(__name__)  # initialise the applicaton
+app.config['SERVER_NAME'] = 'siliconsages.software'
 app.secret_key = '123456789'
 app.config["SECURITY_PASSWORD_SALT"] = "123456789123456789123456789"
 socketio = SocketIO(app, async_mode='eventlet', transports=['websocket'])
 
 LIMIT = "50 per 10 seconds"
+
 
 limiter = Limiter(
     get_remote_address,
@@ -57,37 +58,46 @@ mail = Mail(app)
 
 global score
 
+
 @app.before_request
 def before_request():
     ip_address = get_remote_address()
     if ip_address in blocked and blocked[ip_address] > time.time():
         return betterMakeResponse("Too many requests, IP is blocked.", "text/plain", 429)
 
+
 start_times = {}
+
+
 @app.route("/")
 @limiter.limit("10 per 10 seconds")
 def home():
     return htmler("templates/index.html")
+
 
 @app.route("/login.html")
 @limiter.limit("10 per 10 seconds")
 def logger():
     return htmler("templates/login.html")
 
+
 @app.route("/index.css")
 @limiter.limit("10 per 10 seconds")
 def indexCsser():
     return csser("templates/index.css")
+
 
 @app.route("/posts.html")
 @limiter.limit("50 per 10 seconds")
 def posterhtml():
     return htmler("templates/posts.html")
 
+
 @app.route("/posts.css")
 @limiter.limit("50 per 10 seconds")
 def posterthingy():
     return csser("templates/posts.css")
+
 
 def userLocator():
     auth = request.cookies.get('auth')  # gets auth plaintext
@@ -99,16 +109,19 @@ def userLocator():
         username = record["username"]  # gets username from user record
     return username
 
+
 @app.route("/functions.js")
 @limiter.limit("10 per 10 seconds")
 def jsFunctions():
     jsCodeStream = open("static/functions.js", "rb").read()
     return betterMakeResponse(jsCodeStream, "text/javascript")
 
+
 @app.route("/background-posts.jpg")
 def background():
     imageCodeStream = open("templates/background-posts.jpg", "rb").read()
     return betterMakeResponse(imageCodeStream, "image/jpg")
+
 
 @app.route("/visit-counter")
 @limiter.limit("50 per 10 seconds")
@@ -123,6 +136,7 @@ def cookie():
     response.headers.set("X-Content-Type-Options", "nosniff")
     return response
 
+
 @app.route("/guest", methods=['POST'])
 @limiter.limit("10 per 10 seconds")
 def guestMode():
@@ -131,6 +145,7 @@ def guestMode():
     if token_str != None:  # if there is a user signed in
         response.delete_cookie("auth")  # remove auth cookie (sign user out)
     return response  # return posts.html
+
 
 @app.route("/register", methods=['POST'])
 @limiter.limit("10 per 10 seconds")
@@ -156,6 +171,7 @@ def register():
         # score_collection.insert_one({"username": username, "score": 0})
         return redirect("/login.html", 301)  # username is available
 
+
 @app.route("/login", methods=['POST'])
 @limiter.limit("10 per 10 seconds")
 def login():
@@ -177,7 +193,8 @@ def login():
             security_collection.update_one({"username": username, "salt": salt, "hash": realHash},
                                            {"$set": {"hashed authentication token": tokenHash}},
                                            True)  # updates database to include authenticated token hash in the record
-            response = make_response(redirect('/view_quizzes', 301))  # generates response that will redirect to the posts page
+            response = make_response(
+                redirect('/view_quizzes', 301))  # generates response that will redirect to the posts page
             response.set_cookie("auth", token, 3600, httponly=True)  # sets authentication token as a cookie
 
             session['logged_in'] = True
@@ -191,6 +208,7 @@ def login():
     else:
         return redirect("/login.html", 301)  # username not found
 
+
 @app.route("/get_posts", methods=['GET'])
 @limiter.limit("50 per 10 seconds")
 def get_posts():  # UNTESTED (pulled from most recent push)
@@ -198,6 +216,7 @@ def get_posts():  # UNTESTED (pulled from most recent push)
     for post in posts:
         post["_id"] = str(post["_id"])
     return json.dumps(posts)
+
 
 @app.route("/add_post", methods=['POST'])  # stores posts in the database
 @limiter.limit("50 per 10 seconds")
@@ -226,6 +245,7 @@ def addPost():
         "userswholiked": str("")  # string 'list' of users who liked the post. Initalize as empty.
     })
     return betterMakeResponse("Post Success", "text/plain")
+
 
 @app.route('/like', methods=['POST'])
 @limiter.limit("50 per 10 seconds")
@@ -260,19 +280,20 @@ def like():
         post_collection.update_one({"mesID": messageID['postid']}, {"$set": {"userswholiked": listasString}})
         return betterMakeResponse("User did not like", "text/plain", 200)
 
+
 @app.route('/create_quiz', methods=['GET', 'POST'])
 @limiter.limit("10 per 10 seconds")
 def create_quiz():
-    authenticatedUser = False       #false if guest
+    authenticatedUser = False  # false if guest
     username = userLocator()
     if username != 'Guest':
         authenticatedUser = True
 
-    if request.method == 'POST' :
+    if request.method == 'POST':
 
         if authenticatedUser:
             # Get quiz data from the form
-            
+
             question = request.form['question']
             option1 = request.form['option1']
             option2 = request.form['option2']
@@ -291,7 +312,7 @@ def create_quiz():
                 'answer_times': 0,
                 'correct_times': 0,
                 # initialize as empty string. Updating this would be adding in following format: 'username:score,'
-                'attemptedUsers' : '' 
+                'attemptedUsers': ''
             }
             inserted = quiz_collection.insert_one(quiz_data)
             _id = str(inserted.inserted_id)
@@ -312,16 +333,18 @@ def create_quiz():
                 quiz_image.save(filepath)
                 quiz_collection.update_one({'_id': _id}, {'$set': {'image': image_filename}})
             return redirect('/view_quizzes', 301)
-        else:   # guest so just redirect to Register 
+        else:  # guest so just redirect to Register
             return redirect('/', 301)
     else:
         # If it's a get request, render the 'create_quiz.html' template
         return render_template('create_quiz.html')
 
+
 @app.route('/uploaded_file/<filename>')
 @limiter.limit("50 per 10 seconds")
 def sendimage(filename):
-    return send_from_directory('/uploaded',filename)
+    return send_from_directory('/uploaded', filename)
+
 
 @app.route('/view_quizzes', methods=['GET'])
 @limiter.limit("10 per 10 seconds")
@@ -329,13 +352,14 @@ def view_quizzes():
     quizzes = quiz_collection.find({'notdisplay': {'$ne': True}})
     return render_template('view_quizzes.html', quizzes=quizzes)
 
+
 @app.route('/check_answer/<quiz_id>', methods=['POST'])
 @limiter.limit("10 per 10 seconds")
 def check_answer(quiz_id):
     if request.method == 'POST':
-        selected_choice = request.form.get('choice')                        #uses get in case there is no choice selected
-        if type(selected_choice) == None:                                   #if user does not pick an option, refreshes the page
-            return make_response(redirect("/view_quizzes.html", 301))       #fixes no choice crashes server bug
+        selected_choice = request.form.get('choice')  # uses get in case there is no choice selected
+        if type(selected_choice) == None:  # if user does not pick an option, refreshes the page
+            return make_response(redirect("/view_quizzes.html", 301))  # fixes no choice crashes server bug
 
         # Retrieve the quiz from the database based on quiz_id
         quiz = quiz_collection.find_one({"_id": ObjectId(quiz_id)})
@@ -355,15 +379,15 @@ def check_answer(quiz_id):
             return betterMakeResponse("Unauthenticated User", "text/plain", 401)
 
         username = userData['username']
-        
+
         # if quiz creator answer his own question, then throw an error
         if username == quiz['username']:
             response_message = "Creators can't answer their own questions"
             return render_template('answer_result.html', message=response_message, return_url='/view_quizzes')
-        
+
         score_record = score_collection.find_one({"username": username})
 
-        if not score_record:    # initial user's score
+        if not score_record:  # initial user's score
             score_record = {
                 "username": username,
                 "score": 0,
@@ -372,11 +396,11 @@ def check_answer(quiz_id):
             }
             score_collection.insert_one(score_record)
 
-        if quiz_id in score_record.get('answered_quizzes', []):   # Each question can only be answered once
+        if quiz_id in score_record.get('answered_quizzes', []):  # Each question can only be answered once
             # return render_template('___.html') html contain "You have already answered this quiz." text and return home button
             response_message = "You have already answered this quiz."
             return render_template('answer_result.html', message=response_message, return_url='/view_quizzes')
-        
+
         new_score = score_record['score']
 
         zeroOrOneScore = 0
@@ -386,31 +410,31 @@ def check_answer(quiz_id):
             new_score = new_score + 1
             # response_message = "Correct. Score: " + str(new_score)
             response_message = "Correct. Score: 1"
-            
-            correct_times = quiz['correct_times']+1
-            
-            quiz_collection.update_one(     # update score to db and quiz id
-            {"_id": ObjectId(quiz_id)},
-            {
-                "$set": {"correct_times": correct_times},
-            }
-        )
+
+            correct_times = quiz['correct_times'] + 1
+
+            quiz_collection.update_one(  # update score to db and quiz id
+                {"_id": ObjectId(quiz_id)},
+                {
+                    "$set": {"correct_times": correct_times},
+                }
+            )
 
         else:
             # get the user's score db, and minus 1
             # new_score = score_record['score'] - 1
             response_message = "Incorrect. Score: 0"
-        
-        answer_times = quiz['answer_times']+1
-        
-        quiz_collection.update_one(     # update score to db and quiz id
+
+        answer_times = quiz['answer_times'] + 1
+
+        quiz_collection.update_one(  # update score to db and quiz id
             {"_id": ObjectId(quiz_id)},
             {
                 "$set": {"answer_times": answer_times},
             }
         )
 
-        score_collection.update_one(     # update score to db and quiz id
+        score_collection.update_one(  # update score to db and quiz id
             {"username": username},
             {
                 "$set": {"score": new_score},
@@ -421,7 +445,8 @@ def check_answer(quiz_id):
         )
         # return render_template('___.html') html contain the score, whether the answer is correct, and return button to view quiz page
         return render_template('answer_result.html', message=response_message, return_url='/view_quizzes')
-    
+
+
 @app.route('/gradebook', methods=['GET'])
 @limiter.limit("10 per 10 seconds")
 def gradebook():
@@ -435,25 +460,26 @@ def gradebook():
         {"hashed authentication token": hashedToken})  # gets all user information from security_collection
     if not userData:
         return betterMakeResponse("Unauthenticated User", "text/plain", 401)
-    
+
     username = userData['username']
-    
-    quizzesMadeByUser = quiz_collection.find({"username": username})  # this is quizzes that user made 
+
+    quizzesMadeByUser = quiz_collection.find({"username": username})  # this is quizzes that user made
 
     takenQuizzes = []
     scoreRecord = score_collection.find_one({"username": username})
     keys = None
 
-    if(scoreRecord!=None):
+    if (scoreRecord != None):
         keysObject = scoreRecord['quizToGrade']
-        if(keysObject!=None):
+        if (keysObject != None):
             keys = keysObject.keys()
             for key in keys:
                 originalQuiz = quiz_collection.find_one({"_id": ObjectId(key)})
                 originalQuiz['scored'] = scoreRecord['quizToGrade'][key]
                 takenQuizzes.append(originalQuiz)
-    
-    return render_template('gradebook.html', quizzes=quizzesMadeByUser, takenQuizzes=takenQuizzes )
+
+    return render_template('gradebook.html', quizzes=quizzesMadeByUser, takenQuizzes=takenQuizzes)
+
 
 def hashSlingingSlasher(token):  # wrapper for hashlib256
     object256 = hashlib.sha256()
@@ -461,13 +487,16 @@ def hashSlingingSlasher(token):  # wrapper for hashlib256
     tokenHash = object256.digest()
     return (tokenHash)
 
+
 def htmler(filename):  # wrapper for opening html files as bytes
     file = open(filename, "rb").read()  # opens filename as bytes and reads the contents
     return betterMakeResponse(file, "text/html")  # uses betterMakeResonse wrapper to make a response
 
+
 def csser(filename):  # wrapper for opening css files
     file = open(filename, "rb").read()  # opens filename as bytes and reads the contents
     return betterMakeResponse(file, "text/css")  # uses betterMakeResponse wrapper to make a response
+
 
 def betterMakeResponse(file, ct, status=200):  # takes in all necessary info to make a response
     response = make_response(file, status)
@@ -477,33 +506,37 @@ def betterMakeResponse(file, ct, status=200):  # takes in all necessary info to 
     response.headers.set("X-Content-Type-Options", "nosniff")  # sets nosniff header
     return response  # returns response object
 
-@socketio.on("refresh_clients") #will help with live updates in the future, for now this does not fully work
-def refreshClients():           #should not be accessible from the client at this point
+
+@socketio.on("refresh_clients")  # will help with live updates in the future, for now this does not fully work
+def refreshClients():  # should not be accessible from the client at this point
     print("got here")
-    emit('init_r',broadcast=True)
+    emit('init_r', broadcast=True)
+
 
 @socketio.on('get_remaining_time')
 def get_remaining_time(data):
     quiz_id = data['quiz_id']
-    
+
     if quiz_id not in start_times:
         start_times[quiz_id] = time.time()
-    
+
     start_time = start_times[quiz_id]
     current_time = time.time()
     time_last = (current_time - start_time)
     remaining_time = int(60 - time_last)
-    
+
     if remaining_time < 0:
         quiz_collection.update_one({'_id': ObjectId(quiz_id)}, {'$set': {'notdisplay': True}})
-        emit('refresh',broadcast=True)  #broadcast flag is for sending to ALL clients and not just one
-    emit('update_remaining_time',{'quiz_id':quiz_id,'remaining_time':remaining_time},broadcast=True)
+        emit('refresh', broadcast=True)  # broadcast flag is for sending to ALL clients and not just one
+    emit('update_remaining_time', {'quiz_id': quiz_id, 'remaining_time': remaining_time}, broadcast=True)
+
 
 @app.errorhandler(429)
 def ratelimit_error(e):
     ip_address = get_remote_address()
     blocked[ip_address] = time.time() + 30
     return betterMakeResponse("Too many requests, IP is blocked.", "text/plain", 429)
+
 
 def send_verification_email(email):
     serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
@@ -519,6 +552,7 @@ def send_verification_email(email):
     )
     mail.send(msg)
 
+
 @app.route('/confirm/<token>')
 def confirm_email(token):
     print(session)
@@ -527,14 +561,14 @@ def confirm_email(token):
     security_collection.update_one({"email": email}, {"$set": {"email_verified": True}})
     # confirm token logical here
     return "Confirmed"
+
+
 @app.route('/send_verification')
 def send_verification():
     print(session)
     email = session.get('email')
     send_verification_email(email)
     return "Verification email sent"
-
-
 
 
 if __name__ == '__main__':
