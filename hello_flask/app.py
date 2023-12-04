@@ -5,12 +5,18 @@ import time
 import bcrypt
 import json
 from bson.objectid import ObjectId
-from flask import Flask, make_response, request, redirect, render_template, send_from_directory, session, jsonify
+from flask import Flask, make_response, request, redirect, render_template, send_from_directory, session, jsonify, url_for
 from pymongo import MongoClient
 from uuid import uuid4
 from flask_socketio import SocketIO, emit
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
+
+import os
+
+
 
 mongo_client = MongoClient("mongo")
 db = mongo_client["cse312"]  # database
@@ -22,6 +28,7 @@ score_collection = db['score']  # used to track user's score
 
 app = Flask(__name__)  # initialise the applicaton
 app.secret_key = '123456789'
+app.config["SECURITY_PASSWORD_SALT"] = "123456789123456789123456789"
 socketio = SocketIO(app, async_mode='eventlet', transports=['websocket'])
 
 limiter = Limiter(
@@ -32,6 +39,15 @@ limiter = Limiter(
 )
 
 blocked = {}
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USERNAME'] = "siliconsages@gmail.com"
+app.config['MAIL_PASSWORD'] = "zeua cdhx zecl devp"
+app.config['MAIL_DEFAULT_SENDER'] = "siliconsages@gmail.com"
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+mail = Mail(app)
 
 # post_collection.delete_many({})  # REMOVE THIS LINE
 # security_collection.delete_many({})  # REMOVE THIS LINE
@@ -164,6 +180,8 @@ def login():
 
             session['logged_in'] = True
             session['email_verified'] = userInfo.get('email_verified', False)
+            session['email'] = userInfo.get('email', False)
+
             return response
         else:
             return redirect("/login.html", 301)  # incorrect password
@@ -483,6 +501,34 @@ def ratelimit_error(e):
     ip_address = get_remote_address()
     blocked[ip_address] = time.time() + 30
     return jsonify(error="ratelimit exceeded", message=str(e.description)), 429
+
+def send_verification_email(email):
+    serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
+    token = serializer.dumps(email, salt=app.config["SECURITY_PASSWORD_SALT"])
+    print(token)
+    confirm_url = url_for('confirm_email', token=token, _external=True)
+    html = render_template('email_verification.html', confirmurl=confirm_url)
+    msg = Message(
+        "Confirm your email",
+        recipients=[email],
+        html=html,
+        sender=app.config['MAIL_DEFAULT_SENDER']
+    )
+    mail.send(msg)
+
+#TODO: Implement the confirm token process
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    # confirm token logical here
+    return
+@app.route('/send_verification')
+def send_verification():
+    print(session)
+    email = session.get('email')
+    send_verification_email(email)
+    return "Verification email sent"
+
+
 
 
 if __name__ == '__main__':

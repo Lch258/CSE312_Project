@@ -5,3 +5,5 @@ Werkzeug==2.3.7
 pymongo
 bcrypt
 Flask-Limiter
+google-auth-oauthlib
+flask_mail
