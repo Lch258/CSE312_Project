@@ -30,17 +30,17 @@ app.secret_key = os.getenv('SECRET_KEY')
 app.config["SECURITY_PASSWORD_SALT"] = os.getenv('SECURITY_PASSWORD_SALT')
 socketio = SocketIO(app, async_mode='eventlet', transports=['websocket'])
 
-LIMIT = "50 per 10 seconds"
+# LIMIT = "50 per 10 seconds"
 
 
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=[LIMIT],
-    storage_uri="memory://",
-)
+# limiter = Limiter(
+#     get_remote_address,
+#     app=app,
+#     default_limits=[LIMIT],
+#     storage_uri="memory://",
+# )
 
-blocked = {}
+# blocked = {}
 
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
 app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT'))
@@ -58,42 +58,42 @@ mail = Mail(app)
 global score
 
 
-@app.before_request
-def before_request():
-    ip_address = get_remote_address()
-    if ip_address in blocked and blocked[ip_address] > time.time():
-        return betterMakeResponse("Too many requests, IP is blocked.", "text/plain", 429)
+# @app.before_request
+# def before_request():
+#     ip_address = get_remote_address()
+#     if ip_address in blocked and blocked[ip_address] > time.time():
+#         return betterMakeResponse("Too many requests, IP is blocked.", "text/plain", 429)
 
 
 start_times = {}
 
 
 @app.route("/")
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def home():
     return htmler("templates/index.html")
 
 
 @app.route("/login.html")
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def logger():
     return htmler("templates/login.html")
 
 
 @app.route("/index.css")
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def indexCsser():
     return csser("templates/index.css")
 
 
 @app.route("/posts.html")
-@limiter.limit("50 per 10 seconds")
+# @limiter.limit("50 per 10 seconds")
 def posterhtml():
     return htmler("templates/posts.html")
 
 
 @app.route("/posts.css")
-@limiter.limit("50 per 10 seconds")
+# @limiter.limit("50 per 10 seconds")
 def posterthingy():
     return csser("templates/posts.css")
 
@@ -110,7 +110,7 @@ def userLocator():
 
 
 @app.route("/functions.js")
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def jsFunctions():
     jsCodeStream = open("static/functions.js", "rb").read()
     return betterMakeResponse(jsCodeStream, "text/javascript")
@@ -123,7 +123,7 @@ def background():
 
 
 @app.route("/visit-counter")
-@limiter.limit("50 per 10 seconds")
+# @limiter.limit("50 per 10 seconds")
 def cookie():
     timesvisited = 1
     if "visits" in request.cookies:
@@ -137,7 +137,7 @@ def cookie():
 
 
 @app.route("/guest", methods=['POST'])
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def guestMode():
     token_str = request.cookies.get("auth")  # gets auth plaintext cookie
     response = make_response(redirect("/view_quizzes.html", 301))  # makes redirect response object
@@ -147,7 +147,7 @@ def guestMode():
 
 
 @app.route("/register", methods=['POST'])
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def register():
     username = html.escape(str(request.form.get('reg_username')))  # working, gets username from request
     bPass = str(request.form.get('reg_password')).encode()  # password from request in bytes
@@ -172,7 +172,7 @@ def register():
 
 
 @app.route("/login", methods=['POST'])
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def login():
     username = html.escape(str(request.form.get('log_username')))  # gets username from the username textbox
     password = str(request.form.get('log_password')).encode()  # gets password from the password textbox
@@ -209,7 +209,7 @@ def login():
 
 
 @app.route("/get_posts", methods=['GET'])
-@limiter.limit("50 per 10 seconds")
+# @limiter.limit("50 per 10 seconds")
 def get_posts():  # UNTESTED (pulled from most recent push)
     posts = list(post_collection.find({}))
     for post in posts:
@@ -218,7 +218,7 @@ def get_posts():  # UNTESTED (pulled from most recent push)
 
 
 @app.route("/add_post", methods=['POST'])  # stores posts in the database
-@limiter.limit("50 per 10 seconds")
+# @limiter.limit("50 per 10 seconds")
 def addPost():
     token_str = request.cookies.get('auth')  # token is a now a string in the database
     try:
@@ -247,7 +247,7 @@ def addPost():
 
 
 @app.route('/like', methods=['POST'])
-@limiter.limit("50 per 10 seconds")
+# @limiter.limit("50 per 10 seconds")
 def like():
     token_str = request.cookies.get('auth')  # token is a now a string in the database
     try:
@@ -281,7 +281,7 @@ def like():
 
 
 @app.route('/create_quiz', methods=['GET', 'POST'])
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def create_quiz():
     authenticatedUser = False  # false if guest
     username = userLocator()
@@ -340,20 +340,20 @@ def create_quiz():
 
 
 @app.route('/uploaded_file/<filename>')
-@limiter.limit("50 per 10 seconds")
+# @limiter.limit("50 per 10 seconds")
 def sendimage(filename):
     return send_from_directory('/uploaded', filename)
 
 
 @app.route('/view_quizzes', methods=['GET'])
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def view_quizzes():
     quizzes = quiz_collection.find({'notdisplay': {'$ne': True}})
     return render_template('view_quizzes.html', quizzes=quizzes)
 
 
 @app.route('/check_answer/<quiz_id>', methods=['POST'])
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def check_answer(quiz_id):
     if request.method == 'POST':
         selected_choice = request.form.get('choice')  # uses get in case there is no choice selected
@@ -447,7 +447,7 @@ def check_answer(quiz_id):
 
 
 @app.route('/gradebook', methods=['GET'])
-@limiter.limit("10 per 10 seconds")
+# @limiter.limit("10 per 10 seconds")
 def gradebook():
     token_str = request.cookies.get('auth')  # token is a now a string in the database
     try:
@@ -530,11 +530,11 @@ def get_remaining_time(data):
     emit('update_remaining_time', {'quiz_id': quiz_id, 'remaining_time': remaining_time}, broadcast=True)
 
 
-@app.errorhandler(429)
-def ratelimit_error(e):
-    ip_address = get_remote_address()
-    blocked[ip_address] = time.time() + 30
-    return betterMakeResponse("Too many requests, IP is blocked.", "text/plain", 429)
+# @app.errorhandler(429)
+# def ratelimit_error(e):
+#     ip_address = get_remote_address()
+#     blocked[ip_address] = time.time() + 30
+#     return betterMakeResponse("Too many requests, IP is blocked.", "text/plain", 429)
 
 
 def send_verification_email(email):
